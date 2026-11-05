@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web USB API デモ</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 14px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .device-card {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 10px;
+      background-color: #f9f9f9;
+    }
+    .device-card h4 {
+      margin: 0 0 10px 0;
+    }
+    #log {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #222;
+      color: #00ff00;
+      font-family: monospace;
+      font-size: 13px;
+      border-radius: 4px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Web USB API デバイス一覧取得</h1>
+  
+  <p>新しいUSBデバイスへのアクセス権を許可するか、許可済みのデバイス一覧を取得します。</p>
+
+  <div>
+    <button id="requestBtn">新規デバイスを許可・取得</button>
+    <button id="getDevicesBtn">許可済みデバイス一覧を更新</button>
+  </div>
+
+  <h3>接続中のデバイス一覧</h3>
+  <div id="deviceList">なし</div>
+
+  <h3>ログ</h3>
+  <div id="log">Web USB APIの準備完了...</div>
+
+  <br>
+  <p><a href="./alt/index.html">index.html</a></p>
+
+  <script>
+    const requestBtn = document.getElementById('requestBtn');
+    const getDevicesBtn = document.getElementById('getDevicesBtn');
+    const deviceListEl = document.getElementById('deviceList');
+    const logEl = document.getElementById('log');
+
+    // ログ出力用ヘルパー関数
+    function log(message) {
+      const now = new Date().toLocaleTimeString();
+      logEl.innerHTML += `<br>[${now}] ${message}`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Web USB APIの対応チェック
+    if (!('usb' in navigator)) {
+      alert('お使いのブラウザはWeb USB APIに対応していません。ChromeまたはEdge等をご利用ください。');
+      log('エラー: Web USB API非対応ブラウザです。');
+    }
+
+    // 1. ユーザー操作で新しいデバイスのアクセス権を要求
+    requestBtn.addEventListener('click', async () => {
+      try {
+        log('デバイス選択ダイアログを表示中...');
+        // filtersを指定しない場合、アクセス可能な全USBデバイスが対象
+        const device = await navigator.usb.requestDevice({ filters: [] });
+        log(`選択されたデバイス: ${device.productName || '名称未設定'}`);
+        await refreshDeviceList();
+      } catch (error) {
+        log(`キャンセルまたはエラー: ${error.message}`);
+      }
+    });
+
+    // 2. 許可済みデバイスの一覧を取得して画面に表示
+    async function refreshDeviceList() {
+      try {
+        const devices = await navigator.usb.getDevices();
+        log(`許可済みデバイス数: ${devices.length}`);
+
+        if (devices.length === 0) {
+          deviceListEl.innerHTML = '<p>許可されている接続デバイスはありません。</p>';
+          return;
+        }
+
+        deviceListEl.innerHTML = '';
+        devices.forEach((device, index) => {
+          const vendorHex = '0x' + device.vendorId.toString(16).padStart(4, '0').toUpperCase();
+          const productHex = '0x' + device.productId.toString(16).padStart(4, '0').toUpperCase();
+
+          const card = document.createElement('div');
+          card.className = 'device-card';
+          card.innerHTML = `
+            <h4>[${index + 1}] ${device.productName || '不明なデバイス'}</h4>
+            <div><strong>メーカー名:</strong> ${device.manufacturerName || '不明'}</div>
+            <div><strong>ベンダーID (Vendor ID):</strong> ${vendorHex}</div>
+            <div><strong>プロダクトID (Product ID):</strong> ${productHex}</div>
+            <div><strong>シリアル番号:</strong> ${device.serialNumber || 'なし'}</div>
+          `;
+          deviceListEl.appendChild(card);
+        });
+      } catch (error) {
+        log(`一覧取得エラー: ${error.message}`);
+      }
+    }
+
+    getDevicesBtn.addEventListener('click', refreshDeviceList);
+
+    // 3. リアルタイムでの接続・切断イベント監視
+    navigator.usb.addEventListener('connect', (event) => {
+      log(`USBデバイスが接続されました: ${event.device.productName || '名称未設定'}`);
+      refreshDeviceList();
+    });
+
+    navigator.usb.addEventListener('disconnect', (event) => {
+      log(`USBデバイスが切断されました: ${event.device.productName || '名称未設定'}`);
+      refreshDeviceList();
+    });
+
+    // 起動時に既存の許可済みデバイスを取得
+    refreshDeviceList();
+  </script>
+
+</body>
+</html>

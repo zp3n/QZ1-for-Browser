@@ -1,0 +1,24 @@
+body {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+  font-family: system-ui, sans-serif;
+}
+
+#nmea-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: monospace;
+}
+
+#parse-button {
+  margin-top: 12px;
+  padding: 8px 16px;
+}
+
+#result {
+  margin-top: 24px;
+  padding: 12px;
+  background: #f4f4f4;
+  white-space: pre-wrap;
+}
